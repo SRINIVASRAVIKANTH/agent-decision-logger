@@ -46,7 +46,7 @@ Fraud-detection-agent:  deny    (confidence 0.91) — "Billing pattern matches k
 Referee outcome: deny (resolved by higher_confidence: fraud-detection-agent)
 ```
 
-*(Add a screenshot or GIF of the Streamlit dashboard here once you run it — see "Taking a screenshot" below.)*
+![dashboard screenshot](screenshots/dashboard-view.png)
 
 ---
 
