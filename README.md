@@ -1,105 +1,157 @@
+<div align="center">
+
 # 🛫 Agent Decision Logger
 
-**A "flight recorder" and "referee" for AI agents — so you can see exactly what your agents did, and why, and resolve it when two agents disagree.**
+### Logs every decision your AI agents make, and why, so you can trust, debug, and explain their behavior.
 
-AI agents are being deployed everywhere — but companies keep killing these projects for one repeated reason: **nobody can trust or explain what the agent actually did.** This project is a small, reusable middleware that fixes that: it wraps any agent's decisions in a transparent, auditable log, and provides a rule-based "referee" to resolve conflicts between two agents instead of letting one silently override the other.
+[![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+![Status](https://img.shields.io/badge/Status-Working%20Demo-brightgreen)
 
-It's intentionally domain-agnostic — the same tool is demoed here plugged into a **GIS permitting agent** and a **healthcare claims agent**, to show it works as general infrastructure, not a one-off script.
-
----
-
-## Why this matters
-
-- **40% of agentic AI projects are projected to be canceled by 2027**, largely due to unclear business value and governance challenges — not lack of capability.
-- In healthcare specifically, **multi-agent systems often produce conflicting decisions**, and there's no standard way to arbitrate between them.
-- In geospatial AI, agents are known to **"hallucinate" — inferring roads, zones, or facts that don't actually exist** — with no lightweight way to catch or log that.
-
-This project targets that trust gap directly, instead of building another single-purpose chatbot.
+</div>
 
 ---
 
-## What it does
+## Overview
 
-| Component | What it's for |
-|---|---|
-| `audit_trail/logger.py` | A Python decorator (`@audit_log`) you put on any agent function. Every call gets automatically logged: what it was asked, what it decided, why, and how long it took. |
-| `audit_trail/referee.py` | When two agents disagree, `resolve()` compares their confidence and reasoning, and either auto-resolves or flags it for a human — with the full reasoning preserved. |
-| `dashboard/app.py` | A simple Streamlit dashboard to browse the audit log in a readable table instead of raw JSON. |
-| `examples/` | Two working demos — a GIS permit-checking agent, and a healthcare claims-vs-fraud agent conflict — showing the tool works across domains. |
+AI agents are programs that make decisions automatically: approve a loan, deny an insurance claim, flag a permit. The problem is that once an AI makes a decision, nobody can easily see why it made that choice. This is a documented, real reason companies cancel AI projects: they can't explain or trust what their AI actually did.
+
+Agent Decision Logger solves that with two small pieces:
+
+**The Logger** silently records every decision an AI agent makes: what it was asked, what it decided, and why. Written to a permanent, readable file, similar to how an airplane's black box flight recorder writes down everything that happens so investigators can review it later.
+
+**The Referee** steps in when two AI agents disagree with each other. It compares their reasoning and either resolves the conflict automatically or flags it for a human to review.
+
+Both pieces are plain Python. No AI model is involved in the logging itself, it just watches and records.
 
 ---
 
-## Demo
+## The demo agents in this repo
 
-**1. A GIS agent's decision, fully logged:**
-```
+To prove this works, the repo includes two small working example agents in the `examples/` folder. You can run both yourself with no setup beyond installing one dependency.
+
+**GIS Permit Agent** (`examples/gis_agent_demo.py`)
+A simple agent that checks whether a land parcel falls inside a flood zone, and approves or denies a building permit based on that. This demonstrates the Logger capturing a real decision.
+
+**Healthcare Claims Agents** (`examples/healthcare_agent_demo.py`)
+Two separate agents look at the same insurance claim and disagree: one approves it, the other flags it as likely fraud. This demonstrates the Referee stepping in and resolving that conflict.
+
+**How I tested these:** I wrote both demo agents myself, ran them locally, and confirmed the log file and dashboard captured every decision correctly. They use sample data I made up, not a live company system. The Logger and Referee themselves are fully real and working, just demonstrated on realistic example agents rather than a production system. Because the tool works at the function level rather than the industry level, the same integration applies to a real agent in any domain.
+
+*(Add screenshots of your terminal running each demo here.)*
+
+---
+
+## What actually gets recorded
+
+Here's the GIS agent being called:
+
+```python
 check_flood_zone("PARCEL-4521")
-→ {'decision': 'deny', 'reason': 'Parcel PARCEL-4521 overlaps FEMA flood zone AE'}
-```
-Every call like this is automatically written to `logs/audit_log.jsonl` — no extra code needed in the agent itself.
-
-**2. Two healthcare agents disagree, and the referee resolves it:**
-```
-Claims-approval-agent:  approve (confidence 0.72) — "Procedure code matches policy coverage"
-Fraud-detection-agent:  deny    (confidence 0.91) — "Billing pattern matches known fraud signature"
-
-Referee outcome: deny (resolved by higher_confidence: fraud-detection-agent)
 ```
 
-*(Add a screenshot or GIF of the Streamlit dashboard here once you run it — see "Taking a screenshot" below.)*
+And here's the exact entry this creates in `logs/audit_log.jsonl`, the permanent record file:
+
+```json
+{
+  "event_id": "2d4ea254",
+  "timestamp": "2026-08-13T19:29:20.090038+00:00",
+  "agent": "gis-permit-agent",
+  "action": "check_flood_zone",
+  "inputs": {"args": ["PARCEL-4521"], "kwargs": {}},
+  "output": {"decision": "deny", "reason": "Parcel PARCEL-4521 overlaps FEMA flood zone AE"},
+  "status": "success",
+  "reasoning": "Parcel PARCEL-4521 overlaps FEMA flood zone AE",
+  "duration_ms": 0.12
+}
+```
+
+Every field here answers a specific question:
+- `timestamp`: exactly when the decision happened
+- `agent`: which agent made it
+- `inputs`: what it was given
+- `output`: what it decided
+- `reasoning`: why
+- `status`: whether it succeeded or errored
+
+This line gets written automatically. No extra code inside the agent itself is needed for it to happen.
+
+You can view this raw file directly in any text editor, or browse it visually through the included dashboard, which is just a table view of the same file:
+
+![dashboard screenshot](screenshots/dashboard-view.png)
 
 ---
 
-## Quickstart
+## How it works under the hood
 
-```bash
-# 1. Clone this repo
-git clone https://github.com/YOUR-USERNAME/agent-decision-logger.git
-cd agent-decision-logger
+No magic here, just one Python feature called a decorator. A decorator is a small wrapper placed directly above a function using `@`. It watches that function run without touching what's inside it.
 
-# 2. Install dependencies
-pip install -r requirements.txt
+A normal AI agent function, in any industry, looks like this:
 
-# 3. Run a demo agent
-python examples/gis_agent_demo.py
-python examples/healthcare_agent_demo.py
-
-# 4. View the results in the dashboard
-streamlit run dashboard/app.py
+```python
+def approve_loan(applicant_id):
+    # their own decision logic, untouched
+    return {"decision": "approve", "reason": "credit score above threshold"}
 ```
 
----
-
-## How to use it in your own agent
-
-Just add one decorator to any function your agent uses to make a decision:
+To plug in the logger, you add exactly two lines. Nothing else changes:
 
 ```python
 from audit_trail import audit_log
 
-@audit_log(agent_name="my-agent")
-def my_decision_function(input_data):
-    # ...your logic...
-    return {"decision": "approve", "reason": "explain why here"}
+@audit_log(agent_name="loan-approval-agent")
+def approve_loan(applicant_id):
+    # their own decision logic, untouched
+    return {"decision": "approve", "reason": "credit score above threshold"}
 ```
 
-Every call is now automatically logged — no other changes needed.
+That's the entire integration. It works on any Python-based agent because it doesn't care what the function does. It only watches what went in, what came out, and why.
 
 ---
 
-## Roadmap
+## Try it yourself
 
-- [ ] Add a web-based (not just local) hosted dashboard
-- [ ] Support more than 2 agents in the referee
-- [ ] Add real GIS data (OpenStreetMap) to the GIS demo instead of mock data
-- [ ] Add a REST API so any agent (in any language) can log to this via HTTP
+```bash
+# 1. Clone this repo
+git clone https://github.com/SRINIVASRAVIKANTH/agent-decision-logger.git
+cd agent-decision-logger
+
+# 2. Install the dependencies
+pip install -r requirements.txt
+
+# 3. Run the GIS demo agent
+python examples/gis_agent_demo.py
+
+# 4. Run the healthcare demo
+python examples/healthcare_agent_demo.py
+
+# 5. See it all in the dashboard
+streamlit run dashboard/app.py
+```
+
+After steps 3 and 4, you can also open `logs/audit_log.jsonl` directly in any text editor and see the recorded decisions yourself.
+
+---
+
+## What's in this repo
+
+```
+agent-decision-logger/
+├── audit_trail/          the actual tool: the Logger and the Referee
+│   ├── logger.py
+│   └── referee.py
+├── examples/              the two working demo agents
+├── dashboard/             optional visual viewer for the logs
+├── logs/                  where recorded decisions get written
+└── README.md
+```
 
 ---
 
 ## Why I built this
 
-I'm a GIS/AI engineer, and I kept seeing the same problem across projects: AI agents make decisions, but nobody can easily see *why*, and when two agents disagree there's no clean process for resolving it. This is a small, focused tool that solves that specific trust gap.
+I work as a GeoAI Automation Engineer, and I kept running into the same issue across projects: AI agents make decisions, but nobody can easily see why, and when two agents disagree there's no clean way to resolve it. This is my attempt at solving that specific trust gap with something small, real, and reusable.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE). Free to use, modify, and build on.
