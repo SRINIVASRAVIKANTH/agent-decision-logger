@@ -38,7 +38,8 @@ Two separate agents look at the same insurance claim and disagree: one approves 
 
 **How I tested these:** I wrote both demo agents myself, ran them locally, and confirmed the log file and dashboard captured every decision correctly. They use sample data I made up, not a live company system. The Logger and Referee themselves are fully real and working, just demonstrated on realistic example agents rather than a production system. Because the tool works at the function level rather than the industry level, the same integration applies to a real agent in any domain.
 
-*(Add screenshots of your terminal running each demo here.)*
+![GIS demo test](screenshots/gis-demo-test.png)
+![healthcare demo test](screenshots/healthcare-demo-test.png)
 
 ---
 
