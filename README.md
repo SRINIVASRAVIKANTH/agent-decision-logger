@@ -6,7 +6,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Working%20Demo-brightgreen)]()
+![Status](https://img.shields.io/badge/Status-Working%20Demo-brightgreen)
 
 </div>
 
