@@ -39,7 +39,6 @@ Two separate agents look at the same insurance claim and disagree: one approves 
 **How I tested these:** I wrote both demo agents myself, ran them locally, and confirmed the log file and dashboard captured every decision correctly. They use sample data I made up, not a live company system. The Logger and Referee themselves are fully real and working, just demonstrated on realistic example agents rather than a production system. Because the tool works at the function level rather than the industry level, the same integration applies to a real agent in any domain.
 
 ![GIS demo test](screenshots/gis-demo-test.png)
-
 ![healthcare demo test](screenshots/healthcare-demo-test.png)
 
 ---
@@ -80,7 +79,10 @@ This line gets written automatically. No extra code inside the agent itself is n
 
 You can view this raw file directly in any text editor, or browse it visually through the included dashboard, which is just a table view of the same file:
 
-![dashboard screenshot](screenshots/dashboard-view.png)
+![dashboard screenshot 1](screenshots/dashboard-view-1.png)
+![dashboard screenshot 2](screenshots/dashboard-view-2.png)
+![dashboard screenshot 3](screenshots/dashboard-view-3.png)
+![dashboard screenshot 4](screenshots/dashboard-view-4.png)
 
 ---
 
