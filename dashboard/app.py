@@ -1,5 +1,5 @@
 """
-Simple dashboard to view the audit trail log in a readable table.
+Agent Decision Logger — Audit Dashboard
 
 Run with:  streamlit run dashboard/app.py
 """
@@ -12,20 +12,73 @@ import streamlit as st
 import pandas as pd
 from audit_trail.logger import read_log
 
-st.set_page_config(page_title="Agent Audit Trail", layout="wide")
-st.title("🛫 Agent Audit Trail — Flight Recorder for AI Agents")
-st.caption("Every decision your AI agents make, with the reasoning behind it.")
+st.set_page_config(
+    page_title="Agent Decision Logger",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
-entries = read_log(limit=200)
+st.markdown("""
+    <style>
+        .main { background-color: #fafafa; }
+        .block-container { padding-top: 2rem; }
+        [data-testid="stMetricValue"] { font-size: 1.9rem; font-weight: 600; }
+        h1 { font-weight: 700; letter-spacing: -0.5px; }
+        .subtitle { color: #6b7280; font-size: 1.05rem; margin-top: -0.6rem; }
+        div[data-testid="stExpander"] { border: 1px solid #e5e7eb; border-radius: 8px; }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("Agent Decision Logger")
+st.markdown('<p class="subtitle">Audit dashboard — every decision your AI agents made, and why.</p>', unsafe_allow_html=True)
+st.write("")
+
+entries = read_log(limit=500)
 
 if not entries:
-    st.info("No log entries yet. Run one of the example scripts first, e.g.:\n\n"
-            "`python examples/gis_agent_demo.py`")
-else:
-    df = pd.DataFrame(entries)
-    st.dataframe(df, use_container_width=True)
+    st.info("No log entries yet. Run one of the example scripts first, e.g. `python examples/gis_agent_demo.py`")
+    st.stop()
 
-    st.subheader("Raw entries")
+df = pd.DataFrame(entries)
+
+total_events = len(df)
+decision_events = df[df["type"].isna()] if "type" in df.columns else df
+successes = (decision_events["status"] == "success").sum() if "status" in decision_events.columns else 0
+referee_events = (df["type"] == "referee_resolution").sum() if "type" in df.columns else 0
+agents_involved = decision_events["agent"].nunique() if "agent" in decision_events.columns else 0
+success_rate = f"{(successes / max(len(decision_events), 1)) * 100:.0f}%"
+
+col1, col2, col3, col4, col5 = st.columns(5)
+col1.metric("Total Events Logged", total_events)
+col2.metric("Agent Decisions", len(decision_events))
+col3.metric("Success Rate", success_rate)
+col4.metric("Referee Resolutions", int(referee_events))
+col5.metric("Distinct Agents", int(agents_involved))
+
+st.write("")
+st.divider()
+
+if "agent" in decision_events.columns and not decision_events["agent"].dropna().empty:
+    st.subheader("Decisions by agent")
+    agent_counts = decision_events["agent"].value_counts()
+    st.bar_chart(agent_counts)
+
+st.write("")
+st.subheader("Decision log")
+
+agent_options = ["All agents"] + sorted(decision_events["agent"].dropna().unique().tolist()) if "agent" in decision_events.columns else ["All agents"]
+selected_agent = st.selectbox("Filter by agent", agent_options)
+
+display_df = decision_events if selected_agent == "All agents" else decision_events[decision_events["agent"] == selected_agent]
+
+show_cols = [c for c in ["timestamp", "agent", "action", "status", "reasoning"] if c in display_df.columns]
+st.dataframe(display_df[show_cols] if show_cols else display_df, use_container_width=True, hide_index=True)
+
+st.write("")
+
+with st.expander("View raw log entries (full JSON)"):
     for entry in reversed(entries):
-        with st.expander(f"{entry.get('timestamp', '')} — {entry.get('agent', entry.get('type', 'event'))}"):
-            st.json(entry)
+        label = f"{entry.get('timestamp', '')} — {entry.get('agent', entry.get('type', 'event'))}"
+        st.markdown(f"**{label}**")
+        st.json(entry)
+        st.write("")
