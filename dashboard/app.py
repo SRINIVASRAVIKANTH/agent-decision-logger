@@ -10,6 +10,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import streamlit as st
 import pandas as pd
+import altair as alt
 from audit_trail.logger import read_log
 
 st.set_page_config(
@@ -63,7 +64,16 @@ if "agent" in decision_events.columns and not decision_events["agent"].dropna().
     st.caption("Counts individual logged decisions. Referee-resolved conflicts (see below) are tracked separately.")
     agent_counts = decision_events["agent"].value_counts().reset_index()
     agent_counts.columns = ["Agent", "Number of Decisions"]
-    st.bar_chart(agent_counts, x="Agent", y="Number of Decisions")
+    chart = (
+        alt.Chart(agent_counts)
+        .mark_bar(color="#1f77b4")
+        .encode(
+            x=alt.X("Agent:N", axis=alt.Axis(labelAngle=0), title="Agent"),
+            y=alt.Y("Number of Decisions:Q", title="Number of Decisions"),
+        )
+        .properties(height=320)
+    )
+    st.altair_chart(chart, use_container_width=True)
 
 st.write("")
 st.subheader("Decision log")
@@ -85,6 +95,7 @@ if not referee_df.empty:
     for _, row in referee_df.iterrows():
         a, b = row["agent_a"], row["agent_b"]
         with st.container(border=True):
+            st.caption(f"Logged at {row['timestamp']}")
             c1, c2, c3 = st.columns([1, 1, 1])
             c1.markdown(f"**{a['agent_name']}**\n\n{a['decision']} (confidence {a['confidence']})\n\n_{a['reason']}_")
             c2.markdown(f"**{b['agent_name']}**\n\n{b['decision']} (confidence {b['confidence']})\n\n_{b['reason']}_")
